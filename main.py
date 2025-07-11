@@ -20,7 +20,6 @@ def extract_same_page_from_pdfs(
 
     # Argument validation
     input_file_dir = Path(input_file_dir_arg)
-
     output_file_dir = input_file_dir.parent / output_file_dir_arg
     page_number_to_extract = page_number_to_extract_arg
     output_file_name_prefix = output_file_name_prefix_arg
@@ -36,29 +35,33 @@ def extract_same_page_from_pdfs(
 
     # create output directory if it doesn't exist
     if not output_file_dir.exists():
-        output_file_dir.mkdir()
+        output_file_dir.mkdir(parents=True, exist_ok=True)
         print("Created: " + str(output_file_dir))
 
-    # iterate through input files
+    # iterate through input files (sorted for consistency)
     print("Starting PDF extraction...")
     print("Extracting page " + str(page_number_to_extract) + " from PDFs...")
-    for input_file_full_path in input_file_dir.glob("*.pdf"):
-        # open input file & create output file
-        input_file = PdfReader(open(input_file_full_path, "rb"))
-        output_file = PdfWriter()
-
-        # extract page from input file & add to output file
-        page = input_file.pages[page_number_to_extract]
-        output_file.add_page(page)
-
-        # write output file to disk
-        output_file_full_path = output_file_dir / (
-            output_file_name_prefix + input_file_full_path.name
-        )
-        with open(output_file_full_path, "wb") as output_stream:
-            output_file.write(output_stream)
-
-        print("Created: " + str(output_file_full_path))
+    for input_file_full_path in sorted(input_file_dir.glob("*.pdf")):
+        try:
+            with open(input_file_full_path, "rb") as f:
+                input_file = PdfReader(f)
+                output_file = PdfWriter()
+                # check if page exists
+                if page_number_to_extract < 0 or page_number_to_extract >= len(
+                    input_file.pages
+                ):
+                    print(f"Skipped (page out of range): {input_file_full_path}")
+                    continue
+                page = input_file.pages[page_number_to_extract]
+                output_file.add_page(page)
+                output_file_full_path = output_file_dir / (
+                    output_file_name_prefix + input_file_full_path.name
+                )
+                with open(output_file_full_path, "wb") as output_stream:
+                    output_file.write(output_stream)
+                print("Created: " + str(output_file_full_path))
+        except Exception as e:
+            print(f"Error processing {input_file_full_path}: {e}")
 
     print("\nPDF extraction complete.")
 
@@ -80,12 +83,10 @@ def combine_pdfs_in_dir(
 
     # Argument validation
     input_file_dir = Path(input_file_dir_arg)
-
     if output_file_dir_arg is None:
         output_file_dir = input_file_dir.parent
     else:
         output_file_dir = input_file_dir.parent / output_file_dir_arg
-
     output_file_name = output_file_name_arg
 
     print("Input file directory: " + str(input_file_dir))
@@ -94,24 +95,23 @@ def combine_pdfs_in_dir(
 
     # create output directory if it doesn't exist
     if not output_file_dir.exists():
-        output_file_dir.mkdir()
+        output_file_dir.mkdir(parents=True, exist_ok=True)
         print("Created: " + str(output_file_dir))
 
-    # create output file
     output_file = PdfWriter()
 
-    # iterate through input files
+    # iterate through input files (sorted for consistency)
     print("Starting PDF combination...")
     print("Combining PDFs...")
-    for input_file_full_path in input_file_dir.glob("*.pdf"):
-        # open input file
-        input_file = PdfReader(open(input_file_full_path, "rb"))
-
-        # add pages from input file to output file
-        for page in input_file.pages:
-            output_file.add_page(page)
-
-        print("Added: " + str(input_file_full_path))
+    for input_file_full_path in sorted(input_file_dir.glob("*.pdf")):
+        try:
+            with open(input_file_full_path, "rb") as f:
+                input_file = PdfReader(f)
+                for page in input_file.pages:
+                    output_file.add_page(page)
+            print("Added: " + str(input_file_full_path))
+        except Exception as e:
+            print(f"Error processing {input_file_full_path}: {e}")
 
     # write output file to disk
     output_file_full_path = output_file_dir / output_file_name
@@ -119,7 +119,6 @@ def combine_pdfs_in_dir(
         output_file.write(output_stream)
 
     print("Created: " + str(output_file_full_path))
-
     print("\nPDF combination complete.")
 
     return output_file_full_path
@@ -144,12 +143,10 @@ def slice_pdf(
 
     # Argument validation
     input_file_path = Path(input_file_path)
-
     if output_file_dir_arg is None:
         output_file_dir = input_file_path.parent
     else:
         output_file_dir = input_file_path.parent / output_file_dir_arg
-
     output_file_name = output_file_name_arg
 
     print("Input file path: " + str(input_file_path))
@@ -158,18 +155,25 @@ def slice_pdf(
 
     # create output directory if it doesn't exist
     if not output_file_dir.exists():
-        output_file_dir.mkdir()
+        output_file_dir.mkdir(parents=True, exist_ok=True)
         print("Created: " + str(output_file_dir))
 
-    # create output file
     output_file = PdfWriter()
 
     # open input file
-    input_file = PdfReader(open(input_file_path, "rb"))
-
-    # add pages from input file to output file
-    for page in input_file.pages[start_page:end_page]:
-        output_file.add_page(page)
+    with open(input_file_path, "rb") as f:
+        input_file = PdfReader(f)
+        num_pages = len(input_file.pages)
+        # handle end_page == -1 as "to the end"
+        if end_page == -1 or end_page is None:
+            end_page_actual = num_pages
+        else:
+            end_page_actual = end_page
+        # clamp start_page and end_page_actual to valid range
+        start_page = max(0, start_page)
+        end_page_actual = min(num_pages, end_page_actual)
+        for page in input_file.pages[start_page:end_page_actual]:
+            output_file.add_page(page)
 
     # write output file to disk
     output_file_full_path = output_file_dir / output_file_name
@@ -177,7 +181,6 @@ def slice_pdf(
         output_file.write(output_stream)
 
     print("Created: " + str(output_file_full_path))
-
     print("\nPDF slicing complete.")
 
     return output_file_full_path
@@ -197,10 +200,8 @@ def combine_pdfs_from_list(
     """
 
     # Argument validation
-    input_file_list = input_file_list_arg
-
+    input_file_list = [Path(f) for f in input_file_list_arg]
     output_file_dir = Path(output_file_dir_arg)
-
     output_file_name = output_file_name_arg
 
     print("Input file list: " + str(input_file_list))
@@ -209,24 +210,23 @@ def combine_pdfs_from_list(
 
     # create output directory if it doesn't exist
     if not output_file_dir.exists():
-        output_file_dir.mkdir()
+        output_file_dir.mkdir(parents=True, exist_ok=True)
         print("Created: " + str(output_file_dir))
 
-    # create output file
     output_file = PdfWriter()
 
     # iterate through input files
     print("Starting PDF combination...")
     print("Combining PDFs...")
     for input_file_full_path in input_file_list:
-        # open input file
-        input_file = PdfReader(open(input_file_full_path, "rb"))
-
-        # add pages from input file to output file
-        for page in input_file.pages:
-            output_file.add_page(page)
-
-        print("Added: " + str(input_file_full_path))
+        try:
+            with open(input_file_full_path, "rb") as f:
+                input_file = PdfReader(f)
+                for page in input_file.pages:
+                    output_file.add_page(page)
+            print("Added: " + str(input_file_full_path))
+        except Exception as e:
+            print(f"Error processing {input_file_full_path}: {e}")
 
     # write output file to disk
     output_file_full_path = output_file_dir / output_file_name
@@ -234,7 +234,6 @@ def combine_pdfs_from_list(
         output_file.write(output_stream)
 
     print("Created: " + str(output_file_full_path))
-
     print("\nPDF combination complete.")
 
     return output_file_full_path
@@ -257,9 +256,7 @@ def compile_final_signed_operating_agreement(
 
     # Argument validation
     clean_oa_path = Path(clean_oa_path)
-
-    if type(investor_signed_oas_dir) == str:
-        investor_signed_oas_dir = Path(investor_signed_oas_dir)
+    investor_signed_oas_dir = Path(investor_signed_oas_dir)
 
     print("Clean operating agreement path: " + str(clean_oa_path))
     print(
