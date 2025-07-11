@@ -12,6 +12,8 @@ python = "^3.10"
 pypdf = "^3.17.0"
 typer = {extras = ["all"], version = "^0.16.0"}
 
+[tool.poetry.scripts]
+extract-pdf-pages = "extract_pdf_pages:app"
 
 [build-system]
 requires = ["poetry-core"]

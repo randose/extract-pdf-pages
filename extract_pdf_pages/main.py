@@ -416,7 +416,3 @@ def compile_final(
         investor_sig_page_number=investor_sig_page,
         manager_sig_page_number=manager_sig_page,
     )
-
-
-if __name__ == "__main__":
-    app()
