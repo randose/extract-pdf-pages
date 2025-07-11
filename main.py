@@ -1,6 +1,11 @@
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional, List, Sequence
 from pypdf import PdfReader, PdfWriter
+import typer
+
+app = typer.Typer(
+    help="PDF extraction and combination utilities for operating agreements."
+)
 
 
 def extract_same_page_from_pdfs(
@@ -8,7 +13,7 @@ def extract_same_page_from_pdfs(
     page_number_to_extract_arg: int = 0,
     output_file_dir_arg: str = "Sig Pages",
     output_file_name_prefix_arg: str = "Sig Page - ",
-):
+) -> Path:
     """Extracts a single page from a directory of PDFs and saves the extracted pages to a new directory.
     Useful for extracting signature pages from a directory of individually signed operating agreements.
 
@@ -70,9 +75,9 @@ def extract_same_page_from_pdfs(
 
 def combine_pdfs_in_dir(
     input_file_dir_arg: Union[Path, str],
-    output_file_dir_arg: Union[str, None] = None,
+    output_file_dir_arg: Optional[str] = None,
     output_file_name_arg: str = "Sig Pages Combined.pdf",
-):
+) -> Path:
     """Combines a directory of PDFs into a single PDF.
     Useful for combining signature pages into a single PDF.
 
@@ -128,9 +133,9 @@ def slice_pdf(
     input_file_path: Union[Path, str],
     start_page: int = 0,
     end_page: int = 1,
-    output_file_dir_arg: Union[str, None] = None,
+    output_file_dir_arg: Optional[str] = None,
     output_file_name_arg: str = "Sliced.pdf",
-):
+) -> Path:
     """Slices a PDF into a new PDF.
     Useful for slicing a PDF into a single page PDF.
 
@@ -187,10 +192,10 @@ def slice_pdf(
 
 
 def combine_pdfs_from_list(
-    input_file_list_arg: list,
+    input_file_list_arg: Sequence[Union[str, Path]],
     output_file_dir_arg: Union[str, Path],
     output_file_name_arg: str = "Combined.pdf",
-):
+) -> Path:
     """Combines a list of PDFs into a single PDF.
     Useful for combining signature pages into a single PDF.
 
@@ -244,7 +249,7 @@ def compile_final_signed_operating_agreement(
     investor_signed_oas_dir: Union[Path, str],
     investor_sig_page_number: int,
     manager_sig_page_number: int,
-):
+) -> Path:
     """Compiles a final signed operating agreement from a clean operating agreement and a directory of signed operating agreements.
     Useful for compiling a final signed operating agreement from a directory of individually signed operating agreements.
 
@@ -313,15 +318,105 @@ def compile_final_signed_operating_agreement(
     return combined_pdf_path
 
 
-if __name__ == "__main__":
-    clean_oa_path = r"C:\Users\daniel\Downloads\Operating Agreement - Clean.pdf"
-    investor_signed_oas_dir = r"C:\Users\daniel\Downloads\Signed Individual"
-    investor_sig_page_number = 28
-    manager_sig_page_number = 27
-
-    combined_pdf_path = compile_final_signed_operating_agreement(
-        clean_oa_path,
-        investor_signed_oas_dir,
-        investor_sig_page_number,
-        manager_sig_page_number,
+@app.command()
+def extract(
+    input_dir: Path = typer.Argument(
+        ..., help="Directory containing PDFs to extract from."
+    ),
+    page_number: int = typer.Option(0, help="Zero-indexed page number to extract."),
+    output_dir: str = typer.Option(
+        "Sig Pages", help="Directory to save extracted pages."
+    ),
+    output_prefix: str = typer.Option(
+        "Sig Page - ", help="Prefix for output file names."
+    ),
+):
+    """Extract a single page from each PDF in a directory."""
+    extract_same_page_from_pdfs(
+        input_file_dir_arg=input_dir,
+        page_number_to_extract_arg=page_number,
+        output_file_dir_arg=output_dir,
+        output_file_name_prefix_arg=output_prefix,
     )
+
+
+@app.command()
+def combine(
+    input_dir: Path = typer.Argument(..., help="Directory containing PDFs to combine."),
+    output_dir: Optional[str] = typer.Option(
+        None, help="Directory to save the combined PDF."
+    ),
+    output_name: str = typer.Option(
+        "Sig Pages Combined.pdf", help="Name of the combined PDF."
+    ),
+):
+    """Combine all PDFs in a directory into a single PDF."""
+    combine_pdfs_in_dir(
+        input_file_dir_arg=input_dir,
+        output_file_dir_arg=output_dir,
+        output_file_name_arg=output_name,
+    )
+
+
+@app.command()
+def slice(
+    input_file: Path = typer.Argument(..., help="PDF file to slice."),
+    start_page: int = typer.Option(0, help="Zero-indexed start page."),
+    end_page: int = typer.Option(
+        1, help="Zero-indexed end page (non-inclusive, -1 for end)."
+    ),
+    output_dir: Optional[str] = typer.Option(
+        None, help="Directory to save the sliced PDF."
+    ),
+    output_name: str = typer.Option("Sliced.pdf", help="Name of the sliced PDF."),
+):
+    """Slice a PDF into a new PDF containing a range of pages."""
+    slice_pdf(
+        input_file_path=input_file,
+        start_page=start_page,
+        end_page=end_page,
+        output_file_dir_arg=output_dir,
+        output_file_name_arg=output_name,
+    )
+
+
+@app.command()
+def combine_list(
+    input_files: List[Path] = typer.Argument(..., help="List of PDF files to combine."),
+    output_dir: Path = typer.Argument(..., help="Directory to save the combined PDF."),
+    output_name: str = typer.Option("Combined.pdf", help="Name of the combined PDF."),
+):
+    """Combine a list of PDFs into a single PDF."""
+    combine_pdfs_from_list(
+        input_file_list_arg=input_files,
+        output_file_dir_arg=output_dir,
+        output_file_name_arg=output_name,
+    )
+
+
+@app.command()
+def compile_final(
+    clean_oa: Path = typer.Argument(
+        ..., help="Path to the clean operating agreement PDF."
+    ),
+    signed_dir: Path = typer.Argument(
+        ..., help="Directory containing signed operating agreements."
+    ),
+    investor_sig_page: int = typer.Argument(
+        ..., help="Zero-indexed page number of investor signature."
+    ),
+    manager_sig_page: int = typer.Argument(
+        ..., help="Zero-indexed page number of manager signature."
+    ),
+):
+    """Compile a final signed operating agreement from a clean OA and signed OAs."""
+    compile_final_signed_operating_agreement(
+        clean_oa_path=clean_oa,
+        investor_signed_oas_dir=signed_dir,
+        investor_sig_page_number=investor_sig_page,
+        manager_sig_page_number=manager_sig_page,
+    )
+
+
+if __name__ == "__main__":
+    app()

@@ -10,6 +10,7 @@ packages = [{include = "extract_pdf_pages"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 pypdf = "^3.17.0"
+typer = {extras = ["all"], version = "^0.16.0"}
 
 
 [build-system]
