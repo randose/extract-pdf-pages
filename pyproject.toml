@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "extract-pdf-pages"
+version = "0.1.0"
+description = ""
+authors = ["Daniel Rosenwald <danielrosenwald@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "extract_pdf_pages"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pypdf = "^3.17.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
